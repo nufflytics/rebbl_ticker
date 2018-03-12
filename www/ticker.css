@@ -30,7 +30,7 @@
   width: 100%;
   overflow: hidden;
   height: 4rem;
-  background-color: rgba(0, 0, 0, 0);
+  background-color: rgba(0, 0, 0, 1);
   padding-left: 100%;
   box-sizing: content-box;
 }
@@ -75,7 +75,7 @@ img {
   position: fixed;
   top: 0;
   right: 0;
-  background-color: rgba(0,0,0,1);
+  background-color: rgba(0,0,0,0);
   padding: 2px;
   width: 250px;
   z-index: 99999;
