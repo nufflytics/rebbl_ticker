@@ -47,8 +47,8 @@
   animation-timing-function: linear;
   -webkit-animation-name: ticker;
   animation-name: ticker;
-  -webkit-animation-duration: 180s;
-  animation-duration: 180s;
+  -webkit-animation-duration: 300s;
+  animation-duration: 300s;
 }
 .ticker-wrap .ticker__item {
   display: inline-block;
@@ -63,9 +63,20 @@ body {
 
 h1, h2, p {
   padding: 0 5%;
-  vertical-align: center;
+  vertical-align: central;
 }
 
 img {
   vertical-align: central;
+  padding-bottom: 4px;
+}
+
+#shiny-notification-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  background-color: rgba(0,0,0,1);
+  padding: 2px;
+  width: 250px;
+  z-index: 99999;
 }

@@ -8,11 +8,25 @@
 library(shiny)
 library(tidyverse)
 library(nufflytics)
+library(lubridate)
 
 api_key <- readRDS("data/api.key")
 
-get_ticker <- function(leagues, start_date) {
-  games <- map(leagues, ~api_matches(api_key, ., limit = 1000, start = start_date)) %>% map("matches") %>% discard(~is.null(.))
+leagues <- c("REBBL - REL", "REBBL - Gman", "REBBL - Big O")
+
+check_ticker <- function() {
+  map(leagues, ~api_matches(api_key, ., limit = 3)) %>% 
+    map("matches") %>% 
+    discard(~is.null(.)) %>% 
+    map_int(~map_int(., "id") %>% max) %>% #Get largest match_id
+    max
+}
+
+get_ticker <- function() {
+  games <- withProgress(message = "Loading Matches:", value = 0, max = length(leagues),
+                        {
+    map(leagues, ~{incProgress(amount = 1, detail = gsub("REBBL - ","",.));api_matches(api_key, ., limit = 1000, start = now("UTC")-days(1))}) %>% map("matches") %>% discard(~is.null(.))
+    })
   
   home_teams <- games %>% modify_depth(2, pluck, "teams", 1, "teamname") %>% unlist
   home_score <- games %>% modify_depth(2, pluck, "teams", 1, "score") %>% unlist
@@ -45,11 +59,7 @@ get_ticker <- function(leagues, start_date) {
 
 shinyServer(function(input, output, session) {
   
- a_ticker <- reactive({
-   invalidateLater(180000, session)
-   
-   get_ticker(input$leagues, input$since)
- })
+ a_ticker <- reactivePoll(300000, session, check_ticker, get_ticker)
   
   output$score_ticker <- renderUI({
     a_ticker()
