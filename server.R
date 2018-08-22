@@ -10,36 +10,41 @@ library(tidyverse)
 library(nufflytics)
 library(lubridate)
 
+league_img <- function(league) {
+  case_when(
+    league == "REL" ~ img(src='REL.png') %>% as.character,
+    league == "GMan" ~ img(src='Gman.png')%>% as.character,
+    league == "Big O" ~ img(src='BigO.png')%>% as.character
+  )
+}
+
 api_key <- readRDS("data/api.key")
 
-leagues <- c("REBBL - REL", "REBBL - Gman", "REBBL - Big O")
+leagues <- glue::glue_collapse(c("REBBL - REL", "REBBL - Gman", "REBBL - Big O"), sep = ",")
 
 check_ticker <- function() {
-  map(leagues, ~api_matches(api_key, ., limit = 3)) %>% 
-    map("matches") %>% 
-    discard(~is.null(.)) %>% 
-    map_int(~map_int(., "id") %>% max) %>% #Get largest match_id
-    max
+  api_matches(api_key, leagues, limit = 3) %>% 
+    .$matches %>% 
+    map_int("id") %>% 
+    max  #Get largest match_id
 }
 
 get_ticker <- function() {
-  games <- withProgress(message = "Loading Matches:", value = 0, max = length(leagues),
-                        {
-    map(leagues, ~{incProgress(amount = 1, detail = gsub("REBBL - ","",.));api_matches(api_key, ., limit = 1000, start = now("UTC")-days(1))}) %>% map("matches") %>% discard(~is.null(.))
-    })
+  games <- api_matches(api_key, leagues, limit = 1000, start = now("UTC")-days(1))$matches
   
-  home_teams <- games %>% modify_depth(2, pluck, "teams", 1, "teamname") %>% unlist
-  home_score <- games %>% modify_depth(2, pluck, "teams", 1, "score") %>% unlist
+  home_teams <- games %>% map(pluck, "teams", 1, "teamname") %>% unlist
+  home_score <- games %>% map(pluck, "teams", 1, "score") %>% unlist
   
-  away_teams <- games %>% modify_depth(2, pluck, "teams", 2, "teamname") %>% unlist
-  away_score <- games %>% modify_depth(2, pluck, "teams", 2, "score") %>% unlist
+  away_teams <- games %>% map(pluck, "teams", 2, "teamname") %>% unlist
+  away_score <- games %>% map(pluck, "teams", 2, "score") %>% unlist
   
+  match_league <- games %>% map_chr("leaguename") %>% stringr::str_remove("REBBL - ")
   
   inner_ticker <- pmap(
-    list(home_teams, home_score, away_score, away_teams), 
+    list(home_teams, home_score, away_score, away_teams, match_league), 
     ~list(
       div(class = "ticker__item", 
-          glue::glue("{..1} {..2} v {..3} {..4}")
+          HTML(glue::glue("{..1} {..2} {league_img(..5)} {..3} {..4}"))
       ),
       div(class = "ticker__item",
           img(src = "REBBL.png")
@@ -59,7 +64,7 @@ get_ticker <- function() {
 
 shinyServer(function(input, output, session) {
   
- a_ticker <- reactivePoll(300000, session, check_ticker, get_ticker)
+  a_ticker <- reactivePoll(300000, session, check_ticker, get_ticker)
   
   output$score_ticker <- renderUI({
     a_ticker()
